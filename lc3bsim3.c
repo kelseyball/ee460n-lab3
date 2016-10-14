@@ -575,6 +575,7 @@ int main(int argc, char *argv[]) {
 /***************************************************************/
 
 int SOURCE; /* determine which of the tri-state buffers will source the bus in eval_bus_drivers */
+int MEM_CYCLE = 1; /* keep track of cycle in memory access */
 
 void eval_micro_sequencer() {
 
@@ -620,8 +621,35 @@ void cycle_memory() {
    * cycle to prepare microsequencer for the fifth cycle.  
    */
 
-}
+  /* if second to last cycle, assert ready bit */
+  if (MEM_CYCLE == MEM_CYCLES - 1) {
+      NEXT_LATCHES.READY = 1;
+  }
 
+  /* last (5th) cycle */
+  else if (MEM_CYCLE == MEM_CYCLES) {
+     int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
+     /* if memory I/O enabled, perform read/write */
+     if (GetMIO_EN(microinst)) {
+         if (GetR_W(microinst) == 0) {
+             /* read from memory */
+             NEXT_LATCHES.MDR = (MEMORY[CURRENT_LATCHES.MAR][1] << 8) + MEMORY[CURRENT_LATCHES.MAR][0];
+         }
+         else {
+             /* write to memory */
+             MEMORY[CURRENT_LATCHES.MAR][0] = CURRENT_LATCHES.MDR & 0x00FF;
+             MEMORY[CURRENT_LATCHES.MAR][1] = CURRENT_LATCHES.MDR & 0xFF00;
+         }
+     }
+     /* reset ready bit and cycle counter */
+     NEXT_LATCHES.READY = 0;
+     MEM_CYCLE = 1;
+  }
+  else {
+      MEM_CYCLE++;
+  }
+
+}
 
 
 void eval_bus_drivers() {
@@ -636,7 +664,7 @@ void eval_bus_drivers() {
    *         Gate_MDR.
    */    
   int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
-  SOURCE = GetGATE_PC(microinst) || GetGATE_ALU(microinst) || GetGATE_ALU(microinst) || GetGATE_MDR(microinst);
+  SOURCE = GetGATE_PC(microinst) || GetGATE_ALU(microinst) || GetGATE_MARMUX(microinst) || GetGATE_MDR(microinst) || GetGATE_SHF(microinst);
 
 }
 
