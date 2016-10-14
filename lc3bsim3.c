@@ -581,6 +581,31 @@ void eval_micro_sequencer() {
    * Evaluate the address of the next state according to the 
    * micro sequencer logic. Latch the next microinstruction.
    */
+  int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
+  int inst = CURRENT_LATCHES.IR;
+  int j = GetJ(microinst);
+
+  /* If IRD, next state is opcode */
+  if (GetIRD(microint)) {
+    j = (inst & 0xF000) >> 12;
+  }
+  else {
+      /* OR J bits with corresponding on COND bits */
+      switch (GetCOND(microinst)) {
+          case 0:
+              break;
+          case 1:
+              j |= (CURRENT_LATCHES.READY << 1);
+              break;
+          case 2:
+              j |= (CURRENT_LATCHES.BEN << 2);
+              break;
+          case 3:
+              j |= (CURRENT_LATCHES.IR[11] >> 11);
+              break;
+      }
+  }
+  CURRENT_LATCHES.MICROINSTRUCTION = CONTROL_STORE[j];
 
 }
 
