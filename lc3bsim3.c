@@ -574,7 +574,6 @@ int main(int argc, char *argv[]) {
    Begin your code here                        */
 /***************************************************************/
 
-int SOURCE; /* determine which of the tri-state buffers will source the bus in eval_bus_drivers */
 int MEM_CYCLE = 1; /* keep track of cycle in memory access */
 
 void eval_micro_sequencer() {
@@ -620,6 +619,8 @@ void cycle_memory() {
    * If fourth, we need to latch Ready bit at the end of 
    * cycle to prepare microsequencer for the fifth cycle.  
    */
+   
+  /* TODO: Don't latch into MDR yet! Store in temp location */
 
   /* if second to last cycle, assert ready bit */
   if (MEM_CYCLE == MEM_CYCLES - 1) {
@@ -629,16 +630,19 @@ void cycle_memory() {
   /* last (5th) cycle */
   else if (MEM_CYCLE == MEM_CYCLES) {
      int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
-     /* if memory I/O enabled, perform read/write */
      if (GetMIO_EN(microinst)) {
-         if (GetR_W(microinst) == 0) {
-             /* read from memory */
-             NEXT_LATCHES.MDR = (MEMORY[CURRENT_LATCHES.MAR][1] << 8) + MEMORY[CURRENT_LATCHES.MAR][0];
+         if (GetR_W(microinst) == 0) { /* read a word into the MDR */
+            NEXT_LATCHES.MDR = (MEMORY[CURRENT_LATCHES.MAR][1] << 8) + MEMORY[CURRENT_LATCHES.MAR][0];
          }
-         else {
-             /* write to memory */
-             MEMORY[CURRENT_LATCHES.MAR][0] = CURRENT_LATCHES.MDR & 0x00FF;
-             MEMORY[CURRENT_LATCHES.MAR][1] = CURRENT_LATCHES.MDR & 0xFF00;
+         else { /* write */
+             if (GetDATA_SIZE(microinst) == 0) { /* byte */
+                 if (CURRENT_LATCHES.MAR & 0x0001) MEMORY[CURRENT_LATCHES.MAR][1] = CURRENT_LATCHES.MDR << 8; /* high byte */
+                 else MEMORY[CURRENT_LATCHES.MAR][0] = CURRENT.LATCHES.MDR; /* low byte */
+             }
+             else { /* word */
+                MEMORY[CURRENT_LATCHES.MAR][0] = Low16bits(CURRENT_LATCHES.MDR & 0x00FF);
+                MEMORY[CURRENT_LATCHES.MAR][1] = Low16bits(CURRENT_LATCHES.MDR & 0xFF00 >> 8);
+             }
          }
      }
      /* reset ready bit and cycle counter */
@@ -651,6 +655,11 @@ void cycle_memory() {
 
 }
 
+int ALU_OUT;
+int SHF_OUT;
+int MDR_OUT;
+int MARMUX_OUT;
+int PC_OUT;
 
 void eval_bus_drivers() {
 
@@ -664,8 +673,49 @@ void eval_bus_drivers() {
    *         Gate_MDR.
    */    
   int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
-  SOURCE = GetGATE_PC(microinst) || GetGATE_ALU(microinst) || GetGATE_MARMUX(microinst) || GetGATE_MDR(microinst) || GetGATE_SHF(microinst);
+  /* TODO: change this to evaluate values of drivers */
 
+    /* Evaluate MARMUX_OUT */
+
+    /* Evaluate PC_OUT */
+
+    /* Evaluate SHF_OUT */
+
+    /* Evaluate ALU_OUT */
+    int inst = CURRENT_LATCHES.IR;
+    int SR1 = GetSR1MUX(microinst) ? (inst & 0xE00) >> 9 : (inst & 0x01C) >> 6; /* SR1 = IR[11:9] or IR[8:6] */
+
+    int sr2_reg = inst & 0x07;
+    int steering_bit = inst & 0x20;
+    int SR2 = steering_bit ? CURRENT_LATCHES.REGS[sr2_reg] : inst & 0x1F; /* TODO: sign extend */
+
+    switch (GetALUK(microinst)) {
+        case 0:
+            /* add */
+            ALU_OUT = SR1 + SR2;
+            break;
+        case 1:
+            /* and */
+            ALU_OUT = SR1 & SR2;
+            break;
+        case 2:
+            /* xor */
+            ALU_OUT = SR1 ^ SR2;
+            break;
+        case 3: 
+            /* pass A */
+            ALU_OUT = SR1;
+            break;
+    }
+
+    /* Evaluate MDR_OUT */
+    if (GetDATA_SIZE(microinst) == 0) { /* byte */
+      if (CURRENT_LATCHES.MAR & 0x0001) MDR_OUT = (CURRENT_LATCHES.MDR & 0xFF00) >> 8; /* high byte */
+      else MDR_OUT = (CURRENT_LATCHES.MDR & 0x00FF);  /* low byte */
+    }
+    else { /* word */
+        MDR_OUT = CURRENT_LATCHES.MDR;
+    }
 }
 
 
@@ -675,7 +725,8 @@ void drive_bus() {
    * Datapath routine for driving the bus from one of the 5 possible 
    * tristate drivers. 
    */       
-  BUS = Low16bits(SOURCE);
+  int source = (GetGATE_PC(microinst) && PC_OUT) || (GetGATE_ALU(microinst) && ALU_OUT) || (GetGATE_MARMUX(microinst) && MARMUX_OUT) || (GetGATE_MDR(microinst) && MDR_OUT) || (GetGATE_SHF(microinst) && SHF_OUT);
+  BUS = Low16bits(source);
 
 }
 
@@ -688,5 +739,7 @@ void latch_datapath_values() {
    * require sourcing the bus; therefore, this routine has to come 
    * after drive_bus.
    */       
+
+
 
 }
