@@ -574,6 +574,7 @@ int main(int argc, char *argv[]) {
    Begin your code here                        */
 /***************************************************************/
 
+int SOURCE; /* determine which of the tri-state buffers will source the bus in eval_bus_drivers */
 
 void eval_micro_sequencer() {
 
@@ -605,7 +606,7 @@ void eval_micro_sequencer() {
               break;
       }
   }
-  CURRENT_LATCHES.MICROINSTRUCTION = CONTROL_STORE[j];
+  NEXT_LATCHES.MICROINSTRUCTION = CONTROL_STORE[j];
 
 }
 
@@ -634,6 +635,8 @@ void eval_bus_drivers() {
    *         Gate_SHF,
    *         Gate_MDR.
    */    
+  int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
+  SOURCE = GetGATE_PC(microinst) || GetGATE_ALU(microinst) || GetGATE_ALU(microinst) || GetGATE_MDR(microinst);
 
 }
 
@@ -644,6 +647,7 @@ void drive_bus() {
    * Datapath routine for driving the bus from one of the 5 possible 
    * tristate drivers. 
    */       
+  BUS = SOURCE;
 
 }
 
