@@ -587,7 +587,7 @@ void eval_micro_sequencer() {
   int j = GetJ(microinst);
 
   /* If IRD, next state is opcode */
-  if (GetIRD(microint)) {
+  if (GetIRD(microinst)) {
     j = (inst & 0xF000) >> 12;
   }
   else {
@@ -602,11 +602,11 @@ void eval_micro_sequencer() {
               j |= (CURRENT_LATCHES.BEN << 2);
               break;
           case 3:
-              j |= (CURRENT_LATCHES.IR[11] >> 11);
+              j |= (CURRENT_LATCHES.IR >> 11);
               break;
       }
   }
-  NEXT_LATCHES.MICROINSTRUCTION = CONTROL_STORE[j];
+  memcpy(NEXT_LATCHES.MICROINSTRUCTION, CONTROL_STORE[j], sizeof(int)*CONTROL_STORE_BITS);
 
 }
 
@@ -647,7 +647,7 @@ void drive_bus() {
    * Datapath routine for driving the bus from one of the 5 possible 
    * tristate drivers. 
    */       
-  BUS = SOURCE;
+  BUS = Low16bits(SOURCE);
 
 }
 
