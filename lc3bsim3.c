@@ -578,7 +578,7 @@ int main(int argc, char *argv[]) {
    Begin your code here                        */
 /***************************************************************/
 
-int MEM_CYCLE = 1; /* keep track of cycle in memory access */
+int MEM_CYCLE = 0; /* keep track of cycle in memory access */
 int ALU_OUT;
 int SHF_OUT;
 int MDR_OUT; /* input to GateMDR driver */
@@ -644,16 +644,16 @@ void cycle_memory() {
      int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
      if (GetMIO_EN(microinst)) {
          if (GetR_W(microinst) == 0) { /* read a word into the MDR */
-            MDR_IN = (MEMORY[CURRENT_LATCHES.MAR][1] << 8) + MEMORY[CURRENT_LATCHES.MAR][0];
+            MDR_IN = (MEMORY[CURRENT_LATCHES.MAR >> 1][1] << 8) + MEMORY[CURRENT_LATCHES.MAR >> 1][0];
          }
          else { /* write */
              if (GetDATA_SIZE(microinst) == 0) { /* byte */
                  if (CURRENT_LATCHES.MAR & 0x0001) MEMORY[CURRENT_LATCHES.MAR][1] = CURRENT_LATCHES.MDR << 8; /* high byte */
-                 else MEMORY[CURRENT_LATCHES.MAR][0] = CURRENT_LATCHES.MDR; /* low byte */
+                 else MEMORY[CURRENT_LATCHES.MAR >> 1][0] = CURRENT_LATCHES.MDR; /* low byte */
              }
              else { /* word */
-                MEMORY[CURRENT_LATCHES.MAR][0] = Low16bits(CURRENT_LATCHES.MDR & 0x00FF);
-                MEMORY[CURRENT_LATCHES.MAR][1] = Low16bits(CURRENT_LATCHES.MDR & 0xFF00 >> 8);
+                MEMORY[CURRENT_LATCHES.MAR >> 1][0] = Low16bits(CURRENT_LATCHES.MDR & 0x00FF);
+                MEMORY[CURRENT_LATCHES.MAR >> 1][1] = Low16bits(CURRENT_LATCHES.MDR & 0xFF00 >> 8);
              }
          }
      }
