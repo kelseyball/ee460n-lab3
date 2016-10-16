@@ -33,6 +33,9 @@ void eval_bus_drivers();
 void drive_bus();
 void latch_datapath_values();
 
+/* Functions I added */
+int signExtend(int num, int pos);
+
 /***************************************************************/
 /* A couple of useful definitions.                             */
 /***************************************************************/
@@ -531,6 +534,7 @@ void initialize(char *ucode_filename, char *program_filename, int num_prog_files
 /* Procedure : main                                            */
 /*                                                             */
 /***************************************************************/
+
 int main(int argc, char *argv[]) {                              
     FILE * dumpsim_file;
 
@@ -610,7 +614,6 @@ void eval_micro_sequencer() {
 
 }
 
-
 void cycle_memory() {
  
   /* 
@@ -637,7 +640,7 @@ void cycle_memory() {
          else { /* write */
              if (GetDATA_SIZE(microinst) == 0) { /* byte */
                  if (CURRENT_LATCHES.MAR & 0x0001) MEMORY[CURRENT_LATCHES.MAR][1] = CURRENT_LATCHES.MDR << 8; /* high byte */
-                 else MEMORY[CURRENT_LATCHES.MAR][0] = CURRENT.LATCHES.MDR; /* low byte */
+                 else MEMORY[CURRENT_LATCHES.MAR][0] = CURRENT_LATCHES.MDR; /* low byte */
              }
              else { /* word */
                 MEMORY[CURRENT_LATCHES.MAR][0] = Low16bits(CURRENT_LATCHES.MDR & 0x00FF);
@@ -672,39 +675,77 @@ void eval_bus_drivers() {
    *         Gate_SHF,
    *         Gate_MDR.
    */    
-  int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
-  /* TODO: change this to evaluate values of drivers */
-
-    /* Evaluate MARMUX_OUT */
-
-    /* Evaluate PC_OUT */
-
-    /* Evaluate SHF_OUT */
-
-    /* Evaluate ALU_OUT */
+    int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
     int inst = CURRENT_LATCHES.IR;
-    int SR1 = GetSR1MUX(microinst) ? (inst & 0xE00) >> 9 : (inst & 0x01C) >> 6; /* SR1 = IR[11:9] or IR[8:6] */
 
+    /* evaluate SR1 */
+    int sr1_reg = GetSR1MUX(microinst) ? (inst & 0xE00) >> 9 : (inst & 0x01C) >> 6; /* SR1 = IR[11:9] or IR[8:6] */
+    int SR1_OUT = CURRENT_LATCHES.REGS[sr1_reg];
+
+    /* evaluate SR2 */
     int sr2_reg = inst & 0x07;
     int steering_bit = inst & 0x20;
-    int SR2 = steering_bit ? CURRENT_LATCHES.REGS[sr2_reg] : inst & 0x1F; /* TODO: sign extend */
+    int SR2_OUT = steering_bit ? CURRENT_LATCHES.REGS[sr2_reg] : signExtend(inst, 0x1F); 
 
+    /* Evaluate MARMUX_OUT */
+    int offset, base;
+    switch (GetADDR2MUX(microinst)) {
+        case 0:
+            offset = signExtend(inst, 0x7FF);
+            break;
+        case 1:
+            offset = signExtend(inst, 0x1FF);
+            break;
+        case 2:
+            offset = signExtend(inst, 0x3F);
+            break;
+        case 3:
+            offset = 0;
+            break;
+    }
+    offset = GetLSHF1(microinst) ? offset : offset << 1;
+    base = GetADDR1MUX(microinst) ? SR1_OUT : CURRENT_LATCHES.PC; 
+    MARMUX_OUT = GetMARMUX(microinst) ? (inst & 0xFF) << 1 : offset + base;
+
+    /* Evaluate PC_OUT */
+    PC_OUT = CURRENT_LATCHES.PC;
+
+    /* Evaluate SHF_OUT */
+    int steeringBits = (inst & 0x30) >> 4;
+    int amount = inst & 0x0F;
+    switch (steeringBits) {
+        case 0:
+            /* LSHF */
+            SHF_OUT = SR1_OUT << amount;
+            break;
+        case 1:
+            /* RSHFL */
+            SHF_OUT = (unsigned) SR1_OUT >> amount;
+            break;
+        case 2: break;
+        case 3:
+            /* RSHFA */
+            SHF_OUT = SR1_OUT >> amount;
+            break;
+    }
+
+    /* Evaluate ALU_OUT */
     switch (GetALUK(microinst)) {
         case 0:
             /* add */
-            ALU_OUT = SR1 + SR2;
+            ALU_OUT = SR1_OUT + SR2_OUT;
             break;
         case 1:
             /* and */
-            ALU_OUT = SR1 & SR2;
+            ALU_OUT = SR1_OUT & SR2_OUT;
             break;
         case 2:
             /* xor */
-            ALU_OUT = SR1 ^ SR2;
+            ALU_OUT = SR1_OUT ^ SR2_OUT;
             break;
         case 3: 
             /* pass A */
-            ALU_OUT = SR1;
+            ALU_OUT = SR1_OUT;
             break;
     }
 
@@ -725,6 +766,7 @@ void drive_bus() {
    * Datapath routine for driving the bus from one of the 5 possible 
    * tristate drivers. 
    */       
+  int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
   int source = (GetGATE_PC(microinst) && PC_OUT) || (GetGATE_ALU(microinst) && ALU_OUT) || (GetGATE_MARMUX(microinst) && MARMUX_OUT) || (GetGATE_MDR(microinst) && MDR_OUT) || (GetGATE_SHF(microinst) && SHF_OUT);
   BUS = Low16bits(source);
 
@@ -742,4 +784,14 @@ void latch_datapath_values() {
 
 
 
+}
+
+int signExtend(int num, int pos) {
+    num &= pos;
+    if ((num & ~(pos >> 1)) != 0) { /* sign bit is a one */
+      return num | ~pos;
+    }
+    else {
+      return num;
+    }
 }
