@@ -1,6 +1,6 @@
 /* 
-    Name 1: Your full name
-    UTEID 1: Your UT EID
+    Name 1: Kelsey Ball
+    UTEID 1: ktb477
 */
 
 /***************************************************************/
@@ -619,6 +619,7 @@ void eval_micro_sequencer() {
       }
   }
   memcpy(NEXT_LATCHES.MICROINSTRUCTION, CONTROL_STORE[j], sizeof(int)*CONTROL_STORE_BITS);
+  NEXT_LATCHES.STATE_NUMBER = j;
 
 }
 
