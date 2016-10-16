@@ -586,7 +586,7 @@ int MARMUX_OUT;
 int PC_OUT;
 int MDR_IN; /* input into MIO.EN mux for loading MAR */
 int EAR;
-
+int source;
 
 void eval_micro_sequencer() {
 
@@ -640,7 +640,7 @@ void cycle_memory() {
   }
 
   /* last (5th) cycle */
-  else if (MEM_CYCLE == MEM_CYCLES) {
+  if (MEM_CYCLE == MEM_CYCLES) {
      int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
      if (GetMIO_EN(microinst)) {
          if (GetR_W(microinst) == 0) { /* read a word into the MDR */
@@ -771,7 +771,13 @@ void drive_bus() {
    * tristate drivers. 
    */       
   int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
-  int source = (GetGATE_PC(microinst) && PC_OUT) || (GetGATE_ALU(microinst) && ALU_OUT) || (GetGATE_MARMUX(microinst) && MARMUX_OUT) || (GetGATE_MDR(microinst) && MDR_OUT) || (GetGATE_SHF(microinst) && SHF_OUT);
+  /* int source = (GetGATE_PC(microinst) && PC_OUT) || (GetGATE_ALU(microinst) && ALU_OUT) || (GetGATE_MARMUX(microinst) && MARMUX_OUT) || (GetGATE_MDR(microinst) && MDR_OUT) || (GetGATE_SHF(microinst) && SHF_OUT); */
+  if (GetGATE_PC(microinst)) source = PC_OUT;
+  else if (GetGATE_ALU(microinst)) source = ALU_OUT;
+  else if (GetGATE_MARMUX(microinst)) source = MARMUX_OUT;
+  else if (GetGATE_MDR(microinst)) source = MDR_OUT;
+  else if (GetGATE_SHF(microinst)) source = SHF_OUT;
+  else source = 0;
   BUS = Low16bits(source);
 
 }
