@@ -579,6 +579,14 @@ int main(int argc, char *argv[]) {
 /***************************************************************/
 
 int MEM_CYCLE = 1; /* keep track of cycle in memory access */
+int ALU_OUT;
+int SHF_OUT;
+int MDR_OUT; /* input to GateMDR driver */
+int MARMUX_OUT;
+int PC_OUT;
+int MDR_IN; /* input into MIO.EN mux for loading MAR */
+int EAR;
+
 
 void eval_micro_sequencer() {
 
@@ -635,7 +643,7 @@ void cycle_memory() {
      int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
      if (GetMIO_EN(microinst)) {
          if (GetR_W(microinst) == 0) { /* read a word into the MDR */
-            NEXT_LATCHES.MDR = (MEMORY[CURRENT_LATCHES.MAR][1] << 8) + MEMORY[CURRENT_LATCHES.MAR][0];
+            MDR_IN = (MEMORY[CURRENT_LATCHES.MAR][1] << 8) + MEMORY[CURRENT_LATCHES.MAR][0];
          }
          else { /* write */
              if (GetDATA_SIZE(microinst) == 0) { /* byte */
@@ -657,12 +665,6 @@ void cycle_memory() {
   }
 
 }
-
-int ALU_OUT;
-int SHF_OUT;
-int MDR_OUT;
-int MARMUX_OUT;
-int PC_OUT;
 
 void eval_bus_drivers() {
 
@@ -705,7 +707,8 @@ void eval_bus_drivers() {
     }
     offset = GetLSHF1(microinst) ? offset : offset << 1;
     base = GetADDR1MUX(microinst) ? SR1_OUT : CURRENT_LATCHES.PC; 
-    MARMUX_OUT = GetMARMUX(microinst) ? (inst & 0xFF) << 1 : offset + base;
+    EAR = base + offset;
+    MARMUX_OUT = GetMARMUX(microinst) ? (inst & 0xFF) << 1 : EAR;
 
     /* Evaluate PC_OUT */
     PC_OUT = CURRENT_LATCHES.PC;
@@ -752,7 +755,7 @@ void eval_bus_drivers() {
     /* Evaluate MDR_OUT */
     if (GetDATA_SIZE(microinst) == 0) { /* byte */
       if (CURRENT_LATCHES.MAR & 0x0001) MDR_OUT = (CURRENT_LATCHES.MDR & 0xFF00) >> 8; /* high byte */
-      else MDR_OUT = (CURRENT_LATCHES.MDR & 0x00FF);  /* low byte */
+      else MDR_OUT = CURRENT_LATCHES.MDR & 0x00FF;  /* low byte */
     }
     else { /* word */
         MDR_OUT = CURRENT_LATCHES.MDR;
@@ -781,9 +784,67 @@ void latch_datapath_values() {
    * require sourcing the bus; therefore, this routine has to come 
    * after drive_bus.
    */       
+    int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
+    int inst = CURRENT_LATCHES.IR;
 
+    /* Load IR */
+    if (GetLD_IR(microinst)) NEXT_LATCHES.IR = BUS;
 
+    /* Load MAR */
+    if (GetLD_MAR(microinst)) NEXT_LATCHES.MAR = BUS;
 
+    /* Load MDR */
+    if (GetLD_MDR(microinst)) {
+        if (GetMIO_EN(microinst)) { /* load from memory */
+            NEXT_LATCHES.MDR = MDR_IN; /* MDR_IN set in 5th cycle of cycle memory */
+        }
+        else { /* load from bus */
+            if (GetDATA_SIZE(microinst) == 0) { /* byte */
+                if (CURRENT_LATCHES.MAR & 0x0001) NEXT_LATCHES.MDR = (BUS & 0xFF00) >> 8; /* low byte */
+                else NEXT_LATCHES.MDR = BUS & 0x00FF; /* high byte */
+            }
+            else { /* word */
+                NEXT_LATCHES.MDR = BUS;
+            }
+        }
+    }
+
+    /* Load CC */
+    if (GetLD_CC(microinst)) {
+        NEXT_LATCHES.N = BUS < 0;
+        NEXT_LATCHES.Z = BUS == 0;
+        NEXT_LATCHES.P = BUS > 0;
+    }
+
+    /* Load BEN */
+    if (GetLD_BEN(microinst)) {
+       int nzp = (inst & 0xE0) >> 9;
+       if ((nzp == 4 && CURRENT_LATCHES.N) || (nzp == 2 && CURRENT_LATCHES.Z) || (nzp == 1 && CURRENT_LATCHES.P))
+           NEXT_LATCHES.BEN = 1;
+       else NEXT_LATCHES.BEN = 0;
+    }
+
+    /* Load PC */
+    if (GetLD_PC(microinst)) {
+        switch (GetPCMUX(microinst)) {
+            case 0:
+                NEXT_LATCHES.PC = BUS;
+                break;
+            case 1:
+                NEXT_LATCHES.PC = EAR;
+                break;
+            case 2:
+                NEXT_LATCHES.PC = CURRENT_LATCHES.PC + 2;
+                break;
+            case 3: break;
+        }
+    }
+
+    /* Load REG */
+    if (GetLD_REG(microinst)) {
+        int dr_reg = GetDRMUX(microinst) ? (CURRENT_LATCHES.IR & 0xE0) >> 9 : 7; /* DR = IR[11:9] or 111 */
+        NEXT_LATCHES.REGS[dr_reg] = BUS;
+    }
 }
 
 int signExtend(int num, int pos) {
