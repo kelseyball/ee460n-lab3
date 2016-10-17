@@ -727,7 +727,7 @@ void eval_bus_drivers() {
         case 2: break;
         case 3:
             /* RSHFA */
-            SHF_OUT = SR1_OUT >> amount;
+            SHF_OUT = (int16_t) SR1_OUT >> amount;
             break;
     }
 
