@@ -1,0 +1,7 @@
+.ORIG x3000
+ADD R1, R1, x0F
+XOR R0, R0, x0F
+XOR R1, R0, R0
+HALT
+.END
+
