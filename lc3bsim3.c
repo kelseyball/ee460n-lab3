@@ -685,7 +685,7 @@ void eval_bus_drivers() {
 
     /* evaluate SR2 */
     int sr2_reg = inst & 0x07;
-    int steering_bit = inst & 0x20 >> 5;
+    int steering_bit = (inst & 0x20) >> 5;
     int SR2_OUT = steering_bit ? signExtend(inst, 0x1F) : CURRENT_LATCHES.REGS[sr2_reg]; 
 
     /* Evaluate MARMUX_OUT */
