@@ -37,7 +37,7 @@ void latch_datapath_values();
 int signExtend(int num, int pos);
 
 /***************************************************************/
-/* A couple of useful definitions.                             */
+
 /***************************************************************/
 #define FALSE 0
 #define TRUE  1
@@ -847,7 +847,7 @@ void latch_datapath_values() {
 
     /* Load REG */
     if (GetLD_REG(microinst)) {
-        int dr_reg = GetDRMUX(microinst) ? 7: (CURRENT_LATCHES.IR & 0xE0) >> 9; /* DR = IR[11:9] or 111 */
+        int dr_reg = GetDRMUX(microinst) ? 7: (CURRENT_LATCHES.IR & 0x0E00) >> 9; /* DR = IR[11:9] or 111 */
         NEXT_LATCHES.REGS[dr_reg] = BUS;
     }
 }
