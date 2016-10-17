@@ -614,7 +614,7 @@ void eval_micro_sequencer() {
               j |= (CURRENT_LATCHES.BEN << 2);
               break;
           case 3:
-              j |= (CURRENT_LATCHES.IR >> 11);
+              j |= (CURRENT_LATCHES.IR & 0x0800 >> 11);
               break;
       }
   }
