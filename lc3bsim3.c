@@ -646,8 +646,8 @@ void cycle_memory() {
          }
          else { /* write */
              if (GetDATA_SIZE(microinst) == 0) { /* byte */
-                 if (CURRENT_LATCHES.MAR & 0x0001) MEMORY[CURRENT_LATCHES.MAR][1] = CURRENT_LATCHES.MDR << 8; /* high byte */
-                 else MEMORY[CURRENT_LATCHES.MAR >> 1][0] = CURRENT_LATCHES.MDR; /* low byte */
+                 if (CURRENT_LATCHES.MAR & 0x0001) MEMORY[CURRENT_LATCHES.MAR >> 1][1] = Low16bits(CURRENT_LATCHES.MDR & 0x00FF); /* high byte */
+                 else MEMORY[CURRENT_LATCHES.MAR >> 1][0] = Low16bits(CURRENT_LATCHES.MDR & 0x00FF); /* low byte */
              }
              else { /* word */
                 MEMORY[CURRENT_LATCHES.MAR >> 1][0] = Low16bits(CURRENT_LATCHES.MDR & 0x00FF);
@@ -805,8 +805,7 @@ void latch_datapath_values() {
         }
         else { /* load from bus */
             if (GetDATA_SIZE(microinst) == 0) { /* byte */
-                if (CURRENT_LATCHES.MAR & 0x0001) NEXT_LATCHES.MDR = (BUS & 0xFF00) >> 8; /* low byte */
-                else NEXT_LATCHES.MDR = BUS & 0x00FF; /* high byte */
+                NEXT_LATCHES.MDR = BUS & 0x00FF;
             }
             else { /* word */
                 NEXT_LATCHES.MDR = BUS;
