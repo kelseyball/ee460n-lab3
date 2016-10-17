@@ -578,7 +578,7 @@ int main(int argc, char *argv[]) {
    Begin your code here                        */
 /***************************************************************/
 
-int MEM_CYCLE = 0; /* keep track of cycle in memory access */
+int MEM_CYCLE = 1; /* keep track of cycle in memory access */
 int ALU_OUT;
 int SHF_OUT;
 int MDR_OUT; /* input to GateMDR driver */
@@ -632,17 +632,15 @@ void cycle_memory() {
    * cycle to prepare microsequencer for the fifth cycle.  
    */
    
-  /* TODO: Don't latch into MDR yet! Store in temp location */
+  int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
+  if (GetMIO_EN(microinst)) { 
+      /* if second to last cycle, assert ready bit */
+      if (MEM_CYCLE == MEM_CYCLES - 1) {
+          NEXT_LATCHES.READY = 1;
+      }
 
-  /* if second to last cycle, assert ready bit */
-  if (MEM_CYCLE == MEM_CYCLES - 1) {
-      NEXT_LATCHES.READY = 1;
-  }
-
-  /* last (5th) cycle */
-  if (MEM_CYCLE == MEM_CYCLES) {
-     int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
-     if (GetMIO_EN(microinst)) {
+      /* last (5th) cycle */
+      if (MEM_CYCLE == MEM_CYCLES) {
          if (GetR_W(microinst) == 0) { /* read a word into the MDR */
             MDR_IN = (MEMORY[CURRENT_LATCHES.MAR >> 1][1] << 8) + MEMORY[CURRENT_LATCHES.MAR >> 1][0];
          }
@@ -656,13 +654,13 @@ void cycle_memory() {
                 MEMORY[CURRENT_LATCHES.MAR >> 1][1] = Low16bits(CURRENT_LATCHES.MDR & 0xFF00 >> 8);
              }
          }
-     }
-     /* reset ready bit and cycle counter */
-     NEXT_LATCHES.READY = 0;
-     MEM_CYCLE = 1;
-  }
-  else {
-      MEM_CYCLE++;
+         /* reset ready bit and cycle counter */
+         NEXT_LATCHES.READY = 0;
+         MEM_CYCLE = 1;
+      }
+      else {
+          MEM_CYCLE++;
+      }
   }
 
 }
@@ -682,13 +680,13 @@ void eval_bus_drivers() {
     int inst = CURRENT_LATCHES.IR;
 
     /* evaluate SR1 */
-    int sr1_reg = GetSR1MUX(microinst) ? (inst & 0xE00) >> 9 : (inst & 0x01C) >> 6; /* SR1 = IR[11:9] or IR[8:6] */
+    int sr1_reg = GetSR1MUX(microinst) ? (inst & 0x01C) >> 6 : (inst & 0xE00) >> 9; /* SR1 = IR[11:9] or IR[8:6] */
     int SR1_OUT = CURRENT_LATCHES.REGS[sr1_reg];
 
     /* evaluate SR2 */
     int sr2_reg = inst & 0x07;
-    int steering_bit = inst & 0x20;
-    int SR2_OUT = steering_bit ? CURRENT_LATCHES.REGS[sr2_reg] : signExtend(inst, 0x1F); 
+    int steering_bit = inst & 0x20 >> 5;
+    int SR2_OUT = steering_bit ? signExtend(inst, 0x1F) : CURRENT_LATCHES.REGS[sr2_reg]; 
 
     /* Evaluate MARMUX_OUT */
     int offset, base;
@@ -706,10 +704,10 @@ void eval_bus_drivers() {
             offset = 0;
             break;
     }
-    offset = GetLSHF1(microinst) ? offset : offset << 1;
-    base = GetADDR1MUX(microinst) ? SR1_OUT : CURRENT_LATCHES.PC; 
+    offset = GetLSHF1(microinst) ? offset << 1 : offset;
+    base = GetADDR1MUX(microinst) ? CURRENT_LATCHES.PC : SR1_OUT; 
     EAR = base + offset;
-    MARMUX_OUT = GetMARMUX(microinst) ? (inst & 0xFF) << 1 : EAR;
+    MARMUX_OUT = GetMARMUX(microinst) ? EAR : (inst & 0xFF) << 1;
 
     /* Evaluate PC_OUT */
     PC_OUT = CURRENT_LATCHES.PC;
@@ -849,7 +847,7 @@ void latch_datapath_values() {
 
     /* Load REG */
     if (GetLD_REG(microinst)) {
-        int dr_reg = GetDRMUX(microinst) ? (CURRENT_LATCHES.IR & 0xE0) >> 9 : 7; /* DR = IR[11:9] or 111 */
+        int dr_reg = GetDRMUX(microinst) ? 7: (CURRENT_LATCHES.IR & 0xE0) >> 9; /* DR = IR[11:9] or 111 */
         NEXT_LATCHES.REGS[dr_reg] = BUS;
     }
 }
