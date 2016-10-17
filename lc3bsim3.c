@@ -822,7 +822,7 @@ void latch_datapath_values() {
 
     /* Load BEN */
     if (GetLD_BEN(microinst)) {
-       int nzp = (inst & 0xE0) >> 9;
+       int nzp = (inst & 0x0E00) >> 9;
        if ((nzp == 4 && CURRENT_LATCHES.N) || (nzp == 2 && CURRENT_LATCHES.Z) || (nzp == 1 && CURRENT_LATCHES.P))
            NEXT_LATCHES.BEN = 1;
        else NEXT_LATCHES.BEN = 0;
