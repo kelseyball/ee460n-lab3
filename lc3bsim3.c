@@ -651,7 +651,7 @@ void cycle_memory() {
              }
              else { /* word */
                 MEMORY[CURRENT_LATCHES.MAR >> 1][0] = Low16bits(CURRENT_LATCHES.MDR & 0x00FF);
-                MEMORY[CURRENT_LATCHES.MAR >> 1][1] = Low16bits(CURRENT_LATCHES.MDR & 0xFF00 >> 8);
+                MEMORY[CURRENT_LATCHES.MAR >> 1][1] = Low16bits((CURRENT_LATCHES.MDR & 0xFF00) >> 8);
              }
          }
          /* reset ready bit and cycle counter */
