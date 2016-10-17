@@ -692,20 +692,20 @@ void eval_bus_drivers() {
     int offset, base;
     switch (GetADDR2MUX(microinst)) {
         case 0:
-            offset = signExtend(inst, 0x7FF);
+            offset = 0;
             break;
         case 1:
-            offset = signExtend(inst, 0x1FF);
-            break;
-        case 2:
             offset = signExtend(inst, 0x3F);
             break;
+        case 2:
+            offset = signExtend(inst, 0x1FF);
+            break;
         case 3:
-            offset = 0;
+            offset = signExtend(inst, 0x7FF);
             break;
     }
     offset = GetLSHF1(microinst) ? offset << 1 : offset;
-    base = GetADDR1MUX(microinst) ? CURRENT_LATCHES.PC : SR1_OUT; 
+    base = GetADDR1MUX(microinst) ? SR1_OUT : CURRENT_LATCHES.PC; 
     EAR = base + offset;
     MARMUX_OUT = GetMARMUX(microinst) ? EAR : (inst & 0xFF) << 1;
 
@@ -833,13 +833,13 @@ void latch_datapath_values() {
     if (GetLD_PC(microinst)) {
         switch (GetPCMUX(microinst)) {
             case 0:
-                NEXT_LATCHES.PC = BUS;
+                NEXT_LATCHES.PC = CURRENT_LATCHES.PC + 2;
                 break;
             case 1:
-                NEXT_LATCHES.PC = EAR;
+                NEXT_LATCHES.PC = BUS;
                 break;
             case 2:
-                NEXT_LATCHES.PC = CURRENT_LATCHES.PC + 2;
+                NEXT_LATCHES.PC = EAR;
                 break;
             case 3: break;
         }
