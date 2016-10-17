@@ -680,7 +680,7 @@ void eval_bus_drivers() {
     int inst = CURRENT_LATCHES.IR;
 
     /* evaluate SR1 */
-    int sr1_reg = GetSR1MUX(microinst) ? (inst & 0x01C) >> 6 : (inst & 0xE00) >> 9; /* SR1 = IR[11:9] or IR[8:6] */
+    int sr1_reg = GetSR1MUX(microinst) ? (inst & 0x01C0) >> 6 : (inst & 0x0E00) >> 9; /* SR1 = IR[11:9] or IR[8:6] */
     int SR1_OUT = CURRENT_LATCHES.REGS[sr1_reg];
 
     /* evaluate SR2 */
