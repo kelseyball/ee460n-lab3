@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 /***************************************************************/
 /*                                                             */
@@ -815,9 +816,9 @@ void latch_datapath_values() {
 
     /* Load CC */
     if (GetLD_CC(microinst)) {
-        NEXT_LATCHES.N = BUS < 0;
-        NEXT_LATCHES.Z = BUS == 0;
-        NEXT_LATCHES.P = BUS > 0;
+        NEXT_LATCHES.N = (int16_t) BUS < 0;
+        NEXT_LATCHES.Z = (int16_t) BUS == 0;
+        NEXT_LATCHES.P = (int16_t) BUS > 0;
     }
 
     /* Load BEN */
