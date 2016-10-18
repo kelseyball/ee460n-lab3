@@ -754,8 +754,8 @@ void eval_bus_drivers() {
 
     /* Evaluate MDR_OUT */
     if (GetDATA_SIZE(microinst) == 0) { /* byte */
-      if (CURRENT_LATCHES.MAR & 0x0001) MDR_OUT = (CURRENT_LATCHES.MDR & 0xFF00) >> 8; /* high byte */
-      else MDR_OUT = CURRENT_LATCHES.MDR & 0x00FF;  /* low byte */
+      if (CURRENT_LATCHES.MAR & 0x0001) MDR_OUT = signExtend(((CURRENT_LATCHES.MDR & 0xFF00) >> 8), 0xFF); /* high byte */
+      else MDR_OUT = signExtend((CURRENT_LATCHES.MDR & 0x00FF), 0xFF);  /* low byte */
     }
     else { /* word */
         MDR_OUT = CURRENT_LATCHES.MDR;
@@ -770,7 +770,6 @@ void drive_bus() {
    * tristate drivers. 
    */       
   int* microinst = CURRENT_LATCHES.MICROINSTRUCTION;
-  /* int source = (GetGATE_PC(microinst) && PC_OUT) || (GetGATE_ALU(microinst) && ALU_OUT) || (GetGATE_MARMUX(microinst) && MARMUX_OUT) || (GetGATE_MDR(microinst) && MDR_OUT) || (GetGATE_SHF(microinst) && SHF_OUT); */
   if (GetGATE_PC(microinst)) source = PC_OUT;
   else if (GetGATE_ALU(microinst)) source = ALU_OUT;
   else if (GetGATE_MARMUX(microinst)) source = MARMUX_OUT;
@@ -806,7 +805,7 @@ void latch_datapath_values() {
         }
         else { /* load from bus */
             if (GetDATA_SIZE(microinst) == 0) { /* byte */
-                NEXT_LATCHES.MDR = BUS & 0x00FF;
+                NEXT_LATCHES.MDR = ((BUS & 0x00FF) << 8) + (BUS & 0x00FF); /* MDR[15:8] , MDR[7:0] <- SR[7:0] */
             }
             else { /* word */
                 NEXT_LATCHES.MDR = BUS;

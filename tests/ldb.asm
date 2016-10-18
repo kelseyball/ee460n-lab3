@@ -1,11 +1,11 @@
 .ORIG x3000
 LEA R0, data
 LDB R1, R0, #0
-LDB R1, R0, #1
-LDB R1, R0, #-1
-LDB R1, R0, #-2 
+LDB R2, R0, #1
+LDB R3, R0, #-1
+LDB R4, R0, #-2 
 HALT
-.FILL xFEDC
-data .FILL x1234
+.FILL #-1 
+data .FILL #0
 .END
 
