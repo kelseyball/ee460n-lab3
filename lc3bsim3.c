@@ -615,7 +615,7 @@ void eval_micro_sequencer() {
               j |= (CURRENT_LATCHES.BEN << 2);
               break;
           case 3:
-              j |= (CURRENT_LATCHES.IR & 0x0800 >> 11);
+              j |= (CURRENT_LATCHES.IR & 0x0800) >> 11;
               break;
       }
   }
@@ -823,7 +823,10 @@ void latch_datapath_values() {
     /* Load BEN */
     if (GetLD_BEN(microinst)) {
        int nzp = (inst & 0x0E00) >> 9;
-       if ((nzp == 4 && CURRENT_LATCHES.N) || (nzp == 2 && CURRENT_LATCHES.Z) || (nzp == 1 && CURRENT_LATCHES.P))
+       int n = (nzp & 0x4) >> 2;
+       int z = (nzp & 0x2) >> 1;
+       int p = (nzp & 0x1);
+       if (n && CURRENT_LATCHES.N || z && CURRENT_LATCHES.Z || p && CURRENT_LATCHES.P) 
            NEXT_LATCHES.BEN = 1;
        else NEXT_LATCHES.BEN = 0;
     }
